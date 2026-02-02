@@ -1,5 +1,6 @@
 """Test ScannerService implementation"""
 import pytest
+from datetime import datetime
 from unittest.mock import AsyncMock
 from uuid import uuid4
 
@@ -38,6 +39,7 @@ class TestScannerServiceContract:
     @pytest.mark.asyncio
     async def test_start_scan_passive_mode(self, scanner_service, sample_scan_config):
         """Test starting scan in passive mode"""
+        now = datetime.now()
         session = ScanSession(
             id=uuid4(),
             config=sample_scan_config,
@@ -46,8 +48,8 @@ class TestScannerServiceContract:
             clients_found=0,
             handshakes_captured=0,
             packets_captured=0,
-            started_at=sample_scan_config,
-            updated_at=sample_scan_config,
+            started_at=now,
+            updated_at=now,
         )
         scanner_service.start_scan.return_value = session
         

@@ -35,8 +35,8 @@ class AuthenticationType(str, Enum):
 
 class Client(BaseModel):
     """WiFi client station - IMMUTABLE"""
-    mac: str = Field(..., regex=r'^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$')
-    bssid: str = Field(..., regex=r'^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$')
+    mac: str = Field(..., pattern=r'^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$')
+    bssid: str = Field(..., pattern=r'^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$')
     probes: List[str] = []
     signal: int = Field(..., ge=-100, le=0)
     packets: int = 0
@@ -50,7 +50,7 @@ class Client(BaseModel):
 
 class Network(BaseModel):
     """WiFi Access Point - IMMUTABLE"""
-    bssid: str = Field(..., regex=r'^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$')
+    bssid: str = Field(..., pattern=r'^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$')
     essid: str = Field(..., min_length=0, max_length=32)
     channel: int = Field(..., ge=1, le=165)
     frequency: int = Field(..., ge=2400, le=5900)

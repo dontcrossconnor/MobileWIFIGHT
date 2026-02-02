@@ -1,8 +1,8 @@
 # WiFi Penetration Testing Platform - Project Status
 
 **Date**: February 2, 2026  
-**Phase**: Planning & Test Framework ✅ COMPLETE  
-**Branch**: `cursor/wi-fi-pentester-app-3eec`
+**Phase**: Planning ✅ + Phase 1–2 Started (Tool Wrappers + AdapterService)  
+**Branch**: `main` (merged from cursor/wi-fi-pentester-app-3eec)
 
 ## Executive Summary
 
@@ -331,7 +331,7 @@ pytest -x
 
 ## Git Workflow
 
-**Current Branch**: `cursor/wi-fi-pentester-app-3eec`
+**Current Branch**: `main`
 
 **Commit History**:
 - ✅ Initial commit: Complete architecture, contracts, and test framework (6,388 insertions)
