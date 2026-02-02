@@ -3,6 +3,15 @@
   "version": "1.0.0",
   "description": "WiFi Penetration Testing Platform - Frontend",
   "main": "electron/main.js",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/dontcrossconnor/MobileWIFIGHT.git"
+  },
+  "bugs": {
+    "url": "https://github.com/dontcrossconnor/MobileWIFIGHT/issues"
+  },
+  "homepage": "https://github.com/dontcrossconnor/MobileWIFIGHT#readme",
+  "license": "MIT",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",

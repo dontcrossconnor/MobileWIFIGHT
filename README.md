@@ -149,8 +149,8 @@ wifi-pentester/
 
 ```bash
 # Clone repository
-git clone <repository-url>
-cd wifi-pentester
+git clone https://github.com/dontcrossconnor/MobileWIFIGHT.git
+cd MobileWIFIGHT
 
 # Backend setup
 cd backend
@@ -353,15 +353,19 @@ This is expected and correct for TDD approach.
 
 ## License
 
-[To be determined]
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ## Disclaimer
 
 This tool is provided "as is" for authorized security testing only. The authors and contributors are not responsible for any misuse or damage caused by this software. Users must comply with all applicable laws and obtain proper authorization before testing any networks.
 
-## Support
+## Repository
 
-[To be determined]
+**GitHub**: https://github.com/dontcrossconnor/MobileWIFIGHT
+
+**Issues**: https://github.com/dontcrossconnor/MobileWIFIGHT/issues
+
+**Pull Requests**: https://github.com/dontcrossconnor/MobileWIFIGHT/pulls
 
 ---
 

@@ -453,13 +453,19 @@ git push origin feature/adapter-service
 
 Users are solely responsible for compliance with all laws.
 
-## Contact & Support
+## Repository Information
 
-[To be determined]
+**GitHub**: https://github.com/dontcrossconnor/MobileWIFIGHT
+
+**Branch**: cursor/wi-fi-pentester-app-3eec
+
+**Issues**: https://github.com/dontcrossconnor/MobileWIFIGHT/issues
+
+**Pull Requests**: https://github.com/dontcrossconnor/MobileWIFIGHT/pulls
 
 ## License
 
-[To be determined]
+MIT License - This project is licensed under the MIT License.
 
 ---
 

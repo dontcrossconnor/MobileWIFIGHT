@@ -4,6 +4,9 @@ version = "1.0.0"
 description = "WiFi Penetration Testing Platform - Backend"
 authors = ["WiFi Pentester Team"]
 readme = "README.md"
+repository = "https://github.com/dontcrossconnor/MobileWIFIGHT"
+homepage = "https://github.com/dontcrossconnor/MobileWIFIGHT"
+license = "MIT"
 
 [tool.poetry.dependencies]
 python = "^3.11"
