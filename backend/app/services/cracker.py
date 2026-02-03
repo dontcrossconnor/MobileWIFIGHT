@@ -19,6 +19,7 @@ from app.tools import Hashcat, HCXTools
 from app.tools.vastai import VastAI
 from app.tools.wordlists import WordlistManager
 from app.core.config import settings
+import asyncio
 
 
 class CrackerService(ICrackerService):
@@ -346,3 +347,154 @@ class CrackerService(ICrackerService):
             job.completed_at = datetime.now()
             job.logs.append(f"Cracking failed: {e}")
             self._jobs[job_id] = job
+
+    async def _execute_remote_cracking(self, job_id: UUID, hash_file: str) -> None:
+        """Execute cracking on remote GPU - REAL implementation"""
+        job = self._jobs[job_id]
+        instance = job.gpu_instance
+        
+        try:
+            # Upload hash file
+            job.logs.append("Uploading hash file to GPU instance...")
+            self._jobs[job_id] = job
+            
+            remote_hash = f"/root/hash_{job_id}.22000"
+            await self.vastai.upload_file(
+                int(instance.instance_id),
+                hash_file,
+                remote_hash,
+            )
+            
+            # Prepare wordlist on remote
+            wordlist_path = job.config.wordlist_path or self.wordlists.get_default_wordlist()
+            remote_wordlist = "/root/wordlist.txt"
+            
+            job.logs.append("Preparing wordlist on GPU instance...")
+            self._jobs[job_id] = job
+            
+            # Download wordlist directly on remote for speed
+            await self.vastai.execute_command(
+                int(instance.instance_id),
+                "apt-get update && apt-get install -y hashcat wget && "
+                "wget -O /root/wordlist.txt https://github.com/brannondorsey/naive-hashcat/releases/download/data/rockyou.txt"
+            )
+            
+            # Start hashcat on remote
+            job.logs.append("Starting remote hashcat...")
+            self._jobs[job_id] = job
+            
+            hashcat_cmd = f"hashcat -m 22000 {remote_hash} {remote_wordlist} -o /root/result.txt --potfile-disable --status --status-timer 5 --force"
+            
+            # Start in background
+            await self.vastai.execute_command(
+                int(instance.instance_id),
+                f"nohup {hashcat_cmd} > /root/hashcat.log 2>&1 &"
+            )
+            
+            await asyncio.sleep(5)
+            
+            # Monitor progress
+            attempts = 0
+            max_attempts = job.config.timeout_minutes * 6
+            
+            while attempts < max_attempts:
+                await asyncio.sleep(10)
+                attempts += 1
+                
+                # Check for password
+                result_cmd = await self.vastai.execute_command(
+                    int(instance.instance_id),
+                    "cat /root/result.txt 2>/dev/null || echo ''"
+                )
+                
+                if result_cmd.strip():
+                    # Password found!
+                    password = result_cmd.strip().split(':')[0] if ':' in result_cmd else result_cmd.strip()
+                    
+                    job = self._jobs[job_id]
+                    job.status = JobStatus.SUCCESS
+                    job.password = password
+                    job.logs.append(f"✓ Password cracked: {password}")
+                    job.completed_at = datetime.now()
+                    
+                    if job.started_at and instance:
+                        duration_hours = (datetime.now() - job.started_at).total_seconds() / 3600
+                        job.cost_usd = Decimal(str(instance.cost_per_hour * duration_hours))
+                    
+                    self._jobs[job_id] = job
+                    return
+                
+                # Check status
+                status_output = await self.vastai.execute_command(
+                    int(instance.instance_id),
+                    "tail -50 /root/hashcat.log 2>/dev/null || echo ''"
+                )
+                
+                if "Exhausted" in status_output:
+                    job = self._jobs[job_id]
+                    job.status = JobStatus.EXHAUSTED
+                    job.logs.append("Wordlist exhausted - password not found")
+                    job.completed_at = datetime.now()
+                    
+                    if job.started_at and instance:
+                        duration_hours = (datetime.now() - job.started_at).total_seconds() / 3600
+                        job.cost_usd = Decimal(str(instance.cost_per_hour * duration_hours))
+                    
+                    self._jobs[job_id] = job
+                    return
+                
+                # Update progress
+                import re
+                speed_match = re.search(r'Speed\.+:\s*([\d.]+)\s*([kMG]?H/s)', status_output)
+                speed_value = 0.0
+                
+                if speed_match:
+                    speed_value = float(speed_match.group(1))
+                    speed_unit = speed_match.group(2)
+                    
+                    if 'GH/s' in speed_unit:
+                        speed_value *= 1000
+                    elif 'kH/s' in speed_unit:
+                        speed_value /= 1000
+                    elif 'H/s' in speed_unit:
+                        speed_value /= 1000000
+                
+                job = self._jobs[job_id]
+                progress = CrackingProgress(
+                    job_id=job_id,
+                    status=JobStatus.RUNNING,
+                    progress_percent=min(90.0, attempts * 2),
+                    speed_mh_per_sec=speed_value,
+                    tried_passwords=0,
+                    total_passwords=None,
+                    eta_seconds=None,
+                )
+                job.progress = progress
+                self._jobs[job_id] = job
+            
+            # Timeout
+            job = self._jobs[job_id]
+            job.status = JobStatus.FAILED
+            job.logs.append("Job timed out")
+            job.completed_at = datetime.now()
+            
+            if job.started_at and instance:
+                duration_hours = (datetime.now() - job.started_at).total_seconds() / 3600
+                job.cost_usd = Decimal(str(instance.cost_per_hour * duration_hours))
+            
+            self._jobs[job_id] = job
+        
+        except Exception as e:
+            job = self._jobs[job_id]
+            job.status = JobStatus.FAILED
+            job.logs.append(f"Remote execution failed: {e}")
+            job.completed_at = datetime.now()
+            self._jobs[job_id] = job
+        
+        finally:
+            # Terminate GPU
+            if instance and instance.instance_id != "local":
+                try:
+                    await self.terminate_gpu(instance.instance_id)
+                except:
+                    pass

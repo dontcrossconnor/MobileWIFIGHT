@@ -130,10 +130,12 @@ export const Attacks: React.FC = () => {
                 borderRadius: '4px',
               }}
             >
-              <option value="handshake_capture">Handshake Capture</option>
-              <option value="deauth">Deauthentication</option>
-              <option value="pmkid">PMKID Attack</option>
+              <option value="handshake_capture">Handshake Capture (Deauth + Capture)</option>
+              <option value="deauth">Deauthentication Only</option>
+              <option value="pmkid">PMKID Attack (Clientless)</option>
               <option value="wps_pixie">WPS Pixie Dust</option>
+              <option value="wps_pin">WPS PIN Bruteforce</option>
+              <option value="wep_arp_replay">WEP ARP Replay</option>
             </select>
           </div>
 

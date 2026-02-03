@@ -27,6 +27,8 @@ apt-get install -y \
     aircrack-ng \
     hcxtools \
     hashcat \
+    reaver \
+    bully \
     wireless-tools \
     net-tools \
     iw \
@@ -34,7 +36,8 @@ apt-get install -y \
     lsb-release \
     wget \
     curl \
-    git
+    git \
+    openssh-client
 
 echo "[3/7] Installing Node.js (if not installed)..."
 if ! command -v node &> /dev/null; then
@@ -110,6 +113,20 @@ fi
 
 echo -n "  hcxpcapngtool: "
 if command -v hcxpcapngtool &> /dev/null; then
+    echo "✓ Installed"
+else
+    echo "✗ NOT FOUND"
+fi
+
+echo -n "  reaver: "
+if command -v reaver &> /dev/null; then
+    echo "✓ Installed"
+else
+    echo "✗ NOT FOUND"
+fi
+
+echo -n "  bully: "
+if command -v bully &> /dev/null; then
     echo "✓ Installed"
 else
     echo "✗ NOT FOUND"
