@@ -4,6 +4,7 @@ from typing import Dict, Optional
 from datetime import datetime
 from uuid import UUID, uuid4
 from decimal import Decimal
+import os
 
 from app.services.interfaces import ICrackerService
 from app.models import (
@@ -15,6 +16,8 @@ from app.models import (
     GPUInstance,
 )
 from app.tools import Hashcat, HCXTools
+from app.tools.vastai import VastAI
+from app.core.config import settings
 
 
 class CrackerService(ICrackerService):
@@ -25,6 +28,9 @@ class CrackerService(ICrackerService):
         self.hcxtools = HCXTools()
         self._jobs: Dict[UUID, CrackingJob] = {}
         self._crack_tasks: Dict[UUID, asyncio.Task] = {}
+        
+        # Cloud provider clients
+        self.vastai = VastAI(settings.vastai_api_key) if settings.vastai_api_key else None
 
     async def create_job(self, config: CrackingJobConfig) -> CrackingJob:
         """Create cracking job"""
@@ -151,8 +157,7 @@ class CrackerService(ICrackerService):
         return job.progress
 
     async def provision_gpu(self, provider: GPUProvider) -> GPUInstance:
-        """Provision GPU instance"""
-        # Simplified implementation - would use actual cloud provider APIs
+        """Provision GPU instance - REAL implementation"""
         
         if provider == GPUProvider.LOCAL:
             # Use local GPU
@@ -172,27 +177,70 @@ class CrackerService(ICrackerService):
             )
         
         elif provider == GPUProvider.VASTAI:
-            # Would use Vast.ai API here
+            # REAL Vast.ai API integration
+            if not self.vastai:
+                raise RuntimeError("Vast.ai API key not configured")
+            
+            # Search for best GPU offer
+            offers = await self.vastai.search_offers(
+                min_gpu_ram=8,
+                max_price=2.0,
+            )
+            
+            if not offers:
+                raise RuntimeError("No suitable GPU instances available on Vast.ai")
+            
+            # Select cheapest offer
+            best_offer = offers[0]
+            
+            # Create instance
+            result = await self.vastai.create_instance(
+                offer_id=best_offer["id"],
+                image="nvidia/cuda:12.0.0-runtime-ubuntu22.04",
+                disk_size=10,
+            )
+            
+            instance_id = result.get("new_contract")
+            
+            # Wait for instance to be ready
+            await asyncio.sleep(30)  # Give it time to boot
+            
+            # Get instance details
+            instance_info = await self.vastai.get_instance(instance_id)
+            
+            # Install hashcat on instance
+            await self.vastai.execute_command(
+                instance_id,
+                "apt-get update && apt-get install -y hashcat"
+            )
+            
             return GPUInstance(
-                instance_id=f"vast_{uuid4().hex[:8]}",
+                instance_id=str(instance_id),
                 provider=GPUProvider.VASTAI,
-                gpu_model="RTX 4090",
-                gpu_count=1,
-                cost_per_hour=0.50,
+                gpu_model=best_offer.get("gpu_name", "Unknown"),
+                gpu_count=best_offer.get("num_gpus", 1),
+                cost_per_hour=best_offer.get("dph_total", 0.0),
                 status="running",
-                ip_address="0.0.0.0",
+                ip_address=instance_info.get("ssh_host", ""),
             )
         
         else:
             raise NotImplementedError(f"Provider not implemented: {provider}")
 
     async def terminate_gpu(self, instance_id: str) -> None:
-        """Terminate GPU instance"""
-        # Would call cloud provider API to terminate
-        pass
+        """Terminate GPU instance - REAL implementation"""
+        if instance_id == "local":
+            return  # Nothing to terminate for local
+        
+        # Vast.ai termination
+        if self.vastai:
+            try:
+                await self.vastai.destroy_instance(int(instance_id))
+            except Exception as e:
+                print(f"Error terminating instance: {e}")
 
     async def _execute_cracking(self, job_id: UUID) -> None:
-        """Execute password cracking"""
+        """Execute password cracking - REAL implementation"""
         job = self._jobs[job_id]
         config = job.config
         
@@ -208,7 +256,12 @@ class CrackerService(ICrackerService):
             job.logs.append("Starting hashcat...")
             self._jobs[job_id] = job
             
-            # Start hashcat
+            # If using cloud GPU, execute remotely
+            if job.gpu_instance and job.gpu_instance.instance_id != "local":
+                await self._execute_remote_cracking(job_id, hash_file)
+                return
+            
+            # Local execution
             process = await self.hashcat.crack_wpa(
                 hash_file=hash_file,
                 wordlist=config.wordlist_path or "/usr/share/wordlists/rockyou.txt",

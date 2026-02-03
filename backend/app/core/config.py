@@ -25,6 +25,11 @@ class Settings(BaseSettings):
     wordlist_dir: str = "/usr/share/wordlists"
     default_wordlist: str = "rockyou.txt"
     
+    # Cloud GPU Providers
+    vastai_api_key: str = ""
+    lambda_api_key: str = ""
+    runpod_api_key: str = ""
+    
     class Config:
         env_file = ".env"
         case_sensitive = False
