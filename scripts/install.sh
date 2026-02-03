@@ -58,20 +58,40 @@ chmod 755 /tmp/wifi-pentester
 chmod 755 /var/log/wifi-pentester
 
 echo "[6/7] Installing wordlists..."
-if [ ! -d "/usr/share/wordlists" ]; then
-    mkdir -p /usr/share/wordlists
-fi
+mkdir -p /usr/share/wordlists
+cd /workspace/backend
+source venv/bin/activate
 
-if [ ! -f "/usr/share/wordlists/rockyou.txt" ]; then
-    echo "Downloading rockyou.txt wordlist..."
-    cd /usr/share/wordlists
-    if [ -f "rockyou.txt.gz" ]; then
-        gunzip rockyou.txt.gz
-    else
-        echo "Note: rockyou.txt not found. You may need to install it manually."
-        echo "On Kali Linux: apt-get install wordlists"
-    fi
-fi
+echo "Downloading essential wordlists (this may take a few minutes)..."
+python3 << 'PYTHON_SCRIPT'
+import asyncio
+import sys
+sys.path.insert(0, '/workspace/backend')
+
+from app.tools.wordlists import WordlistManager
+
+async def download():
+    manager = WordlistManager("/usr/share/wordlists")
+    print("\nDownloading essential wordlists:")
+    print("- RockYou (139 MB, 14M passwords)")
+    print("- Common Passwords (8 MB, 1M passwords)")
+    print("- WiFi Defaults (5 KB, 500 passwords)")
+    print("- WPA Probable (44 KB, 4.8K passwords)")
+    print("")
+    
+    results = await manager.download_essentials()
+    
+    success = sum(1 for v in results.values() if v)
+    total = len(results)
+    
+    print(f"\n✓ Downloaded {success}/{total} essential wordlists")
+    
+    if success < total:
+        print("\nNote: Some wordlists failed. You can download them later with:")
+        print("  python -c 'from app.tools.wordlists import WordlistManager; import asyncio; asyncio.run(WordlistManager().download_all())'")
+
+asyncio.run(download())
+PYTHON_SCRIPT
 
 echo "[7/7] Verifying tools..."
 echo -n "  aircrack-ng: "

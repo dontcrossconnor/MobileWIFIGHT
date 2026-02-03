@@ -17,6 +17,7 @@ from app.models import (
 )
 from app.tools import Hashcat, HCXTools
 from app.tools.vastai import VastAI
+from app.tools.wordlists import WordlistManager
 from app.core.config import settings
 
 
@@ -26,6 +27,7 @@ class CrackerService(ICrackerService):
     def __init__(self):
         self.hashcat = Hashcat()
         self.hcxtools = HCXTools()
+        self.wordlists = WordlistManager(settings.wordlist_dir)
         self._jobs: Dict[UUID, CrackingJob] = {}
         self._crack_tasks: Dict[UUID, asyncio.Task] = {}
         
@@ -262,9 +264,21 @@ class CrackerService(ICrackerService):
                 return
             
             # Local execution
+            # Get wordlist - use configured or default
+            wordlist_path = config.wordlist_path
+            if not wordlist_path:
+                try:
+                    wordlist_path = self.wordlists.get_default_wordlist()
+                except RuntimeError:
+                    # No wordlists available, download essentials
+                    job.logs.append("No wordlists found, downloading essentials...")
+                    self._jobs[job_id] = job
+                    await self.wordlists.download_essentials()
+                    wordlist_path = self.wordlists.get_default_wordlist()
+            
             process = await self.hashcat.crack_wpa(
                 hash_file=hash_file,
-                wordlist=config.wordlist_path or "/usr/share/wordlists/rockyou.txt",
+                wordlist=wordlist_path,
                 session_name=str(job_id),
                 rules=config.rules_file,
                 mask=config.mask,
