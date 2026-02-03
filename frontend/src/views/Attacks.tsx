@@ -133,9 +133,11 @@ export const Attacks: React.FC = () => {
               <option value="handshake_capture">Handshake Capture (Deauth + Capture)</option>
               <option value="deauth">Deauthentication Only</option>
               <option value="pmkid">PMKID Attack (Clientless)</option>
-              <option value="wps_pixie">WPS Pixie Dust</option>
-              <option value="wps_pin">WPS PIN Bruteforce</option>
-              <option value="wep_arp_replay">WEP ARP Replay</option>
+              <option value="wps_pixie">WPS Pixie Dust (Fast)</option>
+              <option value="wps_pin">WPS PIN Bruteforce (Slow)</option>
+              <option value="wep_arp_replay">WEP ARP Replay Attack</option>
+              <option value="wep_frag">WEP Fragmentation Attack</option>
+              <option value="wep_chop">WEP ChopChop Attack</option>
             </select>
           </div>
 

@@ -128,8 +128,10 @@ class AttackService(IAttackService):
                 result = await self._execute_pmkid(attack_id)
             elif config.attack_type in [AttackType.WPS_PIXIE, AttackType.WPS_PIN]:
                 result = await self._execute_wps(attack_id)
-            elif config.attack_type in [AttackType.WEP_ARP_REPLAY, AttackType.WEP_FRAG]:
+            elif config.attack_type in [AttackType.WEP_ARP_REPLAY, AttackType.WEP_FRAG, AttackType.WEP_CHOP]:
                 result = await self._execute_wep(attack_id)
+            elif config.attack_type == AttackType.FAKE_AP:
+                result = await self._execute_fake_ap(attack_id)
             else:
                 raise NotImplementedError(f"Attack type not implemented: {config.attack_type}")
             

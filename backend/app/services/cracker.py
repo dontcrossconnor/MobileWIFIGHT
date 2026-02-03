@@ -227,6 +227,20 @@ class CrackerService(ICrackerService):
                 ip_address=instance_info.get("ssh_host", ""),
             )
         
+        elif provider == GPUProvider.LAMBDA:
+            raise NotImplementedError(
+                "Lambda Labs provider not implemented. "
+                "Use 'local' or 'vastai' for GPU cracking. "
+                "Lambda Labs API can be added following the VastAI pattern."
+            )
+        
+        elif provider == GPUProvider.RUNPOD:
+            raise NotImplementedError(
+                "RunPod provider not implemented. "
+                "Use 'local' or 'vastai' for GPU cracking. "
+                "RunPod API can be added following the VastAI pattern."
+            )
+        
         else:
             raise NotImplementedError(f"Provider not implemented: {provider}")
 
