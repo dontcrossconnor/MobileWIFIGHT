@@ -150,11 +150,248 @@ class ReportService(IReportService):
         return self._reports[report_id]
 
     async def export_report(self, report_id: UUID, output_path: str) -> str:
-        """Export report to file"""
+        """Export report to file - REAL implementation"""
         report = await self.get_report(report_id)
         
-        # Would generate actual file (PDF/HTML) in production
-        # For now, just return path
+        if report.format == ReportFormat.PDF:
+            return await self._generate_pdf_file(report, output_path)
+        elif report.format == ReportFormat.HTML:
+            return await self._generate_html_file(report, output_path)
+        elif report.format == ReportFormat.JSON:
+            return await self._generate_json_file(report, output_path)
+        elif report.format == ReportFormat.MARKDOWN:
+            return await self._generate_markdown_file(report, output_path)
+        else:
+            raise ValueError(f"Unsupported format: {report.format}")
+    
+    async def _generate_pdf_file(self, report: Report, output_path: str) -> str:
+        """Generate PDF report file"""
+        from reportlab.lib.pagesizes import letter
+        from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+        from reportlab.lib.units import inch
+        from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, PageBreak
+        from reportlab.lib import colors
+        import os
+        
+        os.makedirs(os.path.dirname(output_path) or '.', exist_ok=True)
+        
+        # Create PDF
+        doc = SimpleDocTemplate(output_path, pagesize=letter)
+        styles = getSampleStyleSheet()
+        story = []
+        
+        # Title
+        title_style = ParagraphStyle(
+            'CustomTitle',
+            parent=styles['Title'],
+            fontSize=24,
+            textColor=colors.HexColor('#1a1a1a'),
+            spaceAfter=30,
+        )
+        story.append(Paragraph(report.title, title_style))
+        story.append(Spacer(1, 0.2 * inch))
+        
+        # Metadata
+        metadata = [
+            ['Organization:', report.organization],
+            ['Tester:', report.tester_name],
+            ['Test Date:', report.test_date.strftime('%Y-%m-%d %H:%M')],
+            ['Networks Tested:', str(report.networks_tested)],
+            ['Vulnerabilities Found:', str(report.vulnerabilities_found)],
+        ]
+        meta_table = Table(metadata, colWidths=[2*inch, 4*inch])
+        meta_table.setStyle(TableStyle([
+            ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
+            ('FONTNAME', (1, 0), (1, -1), 'Helvetica'),
+            ('FONTSIZE', (0, 0), (-1, -1), 10),
+            ('TEXTCOLOR', (0, 0), (0, -1), colors.HexColor('#374151')),
+        ]))
+        story.append(meta_table)
+        story.append(Spacer(1, 0.3 * inch))
+        
+        # Executive Summary
+        story.append(Paragraph('Executive Summary', styles['Heading1']))
+        story.append(Paragraph(report.executive_summary, styles['Normal']))
+        story.append(Spacer(1, 0.2 * inch))
+        
+        # Findings
+        story.append(PageBreak())
+        story.append(Paragraph('Security Findings', styles['Heading1']))
+        
+        for i, finding in enumerate(report.findings, 1):
+            # Finding title with severity
+            severity_colors = {
+                VulnerabilitySeverity.CRITICAL: '#ef4444',
+                VulnerabilitySeverity.HIGH: '#f59e0b',
+                VulnerabilitySeverity.MEDIUM: '#3b82f6',
+                VulnerabilitySeverity.LOW: '#10b981',
+                VulnerabilitySeverity.INFO: '#6b7280',
+            }
+            
+            story.append(Paragraph(f'{i}. {finding.title}', styles['Heading2']))
+            story.append(Paragraph(f'<b>Severity:</b> <font color="{severity_colors[finding.severity]}">{finding.severity.value.upper()}</font>', styles['Normal']))
+            story.append(Paragraph(f'<b>Affected Network:</b> {finding.affected_network}', styles['Normal']))
+            story.append(Paragraph(f'<b>Description:</b> {finding.description}', styles['Normal']))
+            story.append(Paragraph('<b>Remediation:</b>', styles['Normal']))
+            story.append(Paragraph(finding.remediation, styles['Normal']))
+            story.append(Spacer(1, 0.2 * inch))
+        
+        # Recommendations
+        story.append(PageBreak())
+        story.append(Paragraph('Recommendations', styles['Heading1']))
+        
+        for i, rec in enumerate(report.recommendations, 1):
+            story.append(Paragraph(f'{i}. {rec}', styles['Normal']))
+            story.append(Spacer(1, 0.1 * inch))
+        
+        # Build PDF
+        doc.build(story)
+        return output_path
+    
+    async def _generate_html_file(self, report: Report, output_path: str) -> str:
+        """Generate HTML report file"""
+        import os
+        os.makedirs(os.path.dirname(output_path) or '.', exist_ok=True)
+        
+        severity_colors = {
+            'critical': '#dc2626',
+            'high': '#ea580c',
+            'medium': '#2563eb',
+            'low': '#059669',
+            'info': '#4b5563',
+        }
+        
+        html = f"""<!DOCTYPE html>
+<html>
+<head>
+    <title>{report.title}</title>
+    <style>
+        body {{ font-family: Arial, sans-serif; margin: 40px; background: #f9fafb; }}
+        .container {{ max-width: 1000px; margin: 0 auto; background: white; padding: 40px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }}
+        h1 {{ color: #1a1a1a; border-bottom: 3px solid #3b82f6; padding-bottom: 10px; }}
+        h2 {{ color: #374151; margin-top: 30px; }}
+        .metadata {{ background: #f3f4f6; padding: 20px; border-radius: 8px; margin: 20px 0; }}
+        .finding {{ border-left: 4px solid #e5e7eb; padding: 15px; margin: 20px 0; background: #f9fafb; }}
+        .severity {{ display: inline-block; padding: 4px 12px; border-radius: 4px; color: white; font-weight: bold; font-size: 12px; }}
+        .evidence {{ background: #f3f4f6; padding: 10px; margin: 10px 0; border-radius: 4px; font-family: monospace; }}
+        .recommendation {{ margin: 10px 0; padding-left: 20px; }}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>{report.title}</h1>
+        
+        <div class="metadata">
+            <p><strong>Organization:</strong> {report.organization}</p>
+            <p><strong>Tester:</strong> {report.tester_name}</p>
+            <p><strong>Test Date:</strong> {report.test_date.strftime('%Y-%m-%d %H:%M')}</p>
+            <p><strong>Networks Tested:</strong> {report.networks_tested}</p>
+            <p><strong>Vulnerabilities Found:</strong> {report.vulnerabilities_found}</p>
+        </div>
+        
+        <h2>Executive Summary</h2>
+        <p>{report.executive_summary}</p>
+        
+        <h2>Security Findings</h2>
+"""
+        
+        for i, finding in enumerate(report.findings, 1):
+            color = severity_colors.get(finding.severity.value, '#6b7280')
+            html += f"""
+        <div class="finding">
+            <h3>{i}. {finding.title}</h3>
+            <p><span class="severity" style="background-color: {color};">{finding.severity.value.upper()}</span></p>
+            <p><strong>Affected Network:</strong> {finding.affected_network}</p>
+            <p><strong>Description:</strong> {finding.description}</p>
+            <p><strong>Evidence:</strong></p>
+            <div class="evidence">
+                {'<br>'.join(finding.evidence)}
+            </div>
+            <p><strong>Remediation:</strong> {finding.remediation}</p>
+        </div>
+"""
+        
+        html += """
+        <h2>Recommendations</h2>
+        <div class="recommendation">
+"""
+        
+        for i, rec in enumerate(report.recommendations, 1):
+            html += f"            <p>{i}. {rec}</p>\n"
+        
+        html += """
+        </div>
+    </div>
+</body>
+</html>
+"""
+        
+        with open(output_path, 'w') as f:
+            f.write(html)
+        
+        return output_path
+    
+    async def _generate_json_file(self, report: Report, output_path: str) -> str:
+        """Generate JSON report file"""
+        import json
+        import os
+        os.makedirs(os.path.dirname(output_path) or '.', exist_ok=True)
+        
+        with open(output_path, 'w') as f:
+            json.dump(report.dict(), f, indent=2, default=str)
+        
+        return output_path
+    
+    async def _generate_markdown_file(self, report: Report, output_path: str) -> str:
+        """Generate Markdown report file"""
+        import os
+        os.makedirs(os.path.dirname(output_path) or '.', exist_ok=True)
+        
+        md = f"""# {report.title}
+
+## Metadata
+
+- **Organization**: {report.organization}
+- **Tester**: {report.tester_name}
+- **Test Date**: {report.test_date.strftime('%Y-%m-%d %H:%M')}
+- **Networks Tested**: {report.networks_tested}
+- **Vulnerabilities Found**: {report.vulnerabilities_found}
+
+## Executive Summary
+
+{report.executive_summary}
+
+## Security Findings
+
+"""
+        
+        for i, finding in enumerate(report.findings, 1):
+            md += f"""### {i}. {finding.title}
+
+**Severity**: {finding.severity.value.upper()}  
+**Affected Network**: {finding.affected_network}
+
+**Description**: {finding.description}
+
+**Evidence**:
+{chr(10).join('- ' + e for e in finding.evidence)}
+
+**Remediation**: {finding.remediation}
+
+---
+
+"""
+        
+        md += f"""## Recommendations
+
+"""
+        
+        for i, rec in enumerate(report.recommendations, 1):
+            md += f"{i}. {rec}\n"
+        
+        with open(output_path, 'w') as f:
+            f.write(md)
+        
         return output_path
 
     def _generate_executive_summary(
