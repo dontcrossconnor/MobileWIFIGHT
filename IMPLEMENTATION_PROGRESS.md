@@ -140,3 +140,5 @@ sudo ./scripts/install.sh
 **Last Updated**: 2026-02-02
 **Status**: ✅ **100% COMPLETE AND FUNCTIONAL**
 **All Features**: IMPLEMENTED AND TESTED
+**Branch**: ✅ **MERGED TO MAIN**
+**Repository**: https://github.com/dontcrossconnor/MobileWIFIGHT
