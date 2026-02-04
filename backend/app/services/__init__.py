@@ -7,6 +7,7 @@ from .interfaces import (
     ICrackerService,
     IReportService,
 )
+from .adapter import AdapterService
 
 __all__ = [
     "IAdapterService",
@@ -15,4 +16,5 @@ __all__ = [
     "ICaptureService",
     "ICrackerService",
     "IReportService",
+    "AdapterService",
 ]
